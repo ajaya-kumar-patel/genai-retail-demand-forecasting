@@ -12,6 +12,9 @@ from sklearn.preprocessing import OrdinalEncoder
 
 from xgboost import XGBRegressor
 
+import mlflow
+from src.utils.mlflow_utils import setup_mlflow
+
 logger = logging.getLogger(__name__)
 
 class ModelTrainer:
@@ -230,16 +233,79 @@ class ModelTrainer:
         return pipeline_path
 
     def initiate_model_training(self):
+
+        setup_mlflow()
+
         df = self.load_data()
 
         train_df, val_df = self.split_data(df)
 
         X_train, y_train, X_val, y_val = self.prepare_features(train_df, val_df)
 
-        pipeline = self.train(X_train, y_train, X_val, y_val)
+        with mlflow.start_run(run_name='xgboost-training') as run:
+            run_id = run.info.run_id
 
-        model_path = self.save_artifacts(pipeline)
+            mlflow.set_tags({
+                "model_type": "XGBRegressor",
+                "stage": "development",
+                "validation_strategy": "chronological"
+            })
+
+            mlflow.log_params({
+                "objective": "reg:squarederror",
+                "n_estimators": 1000,
+                "learning_rate": 0.05,
+                "max_depth": 8,
+                "min_child_weight": 5,
+                "subsample": 0.8,
+                "colsample_bytree": 0.8,
+                "reg_alpha": 0.0,
+                "reg_lambda": 1.0,
+                "tree_method": "hist",
+                "random_state": 42,
+                "early_stopping_rounds": 50,
+                "validation_days": self.validation_days,
+                "training_rows": len(X_train),
+                "validation_rows": len(X_val),
+            })
+
+            mlflow.log_params({
+                "training_start": train_df["date"].min().strftime("%Y-%m-%d"),
+                "training_end": train_df["date"].max().strftime("%Y-%m-%d"),
+                "validation_start": val_df["date"].min().strftime("%Y-%m-%d"),
+                "validation_end": val_df["date"].max().strftime("%Y-%m-%d"),
+            })
+
+            pipeline = self.train(X_train, y_train, X_val, y_val)
+
+            model_path = self.save_artifacts(pipeline)
+
+            # Log the existing model files as MLflow artifacts.
+            mlflow.log_artifact(str(model_path), artifact_path="model_files")
+
+            native_model_path = self.model_dir / "xgboost_model.json"
+
+            mlflow.log_artifact(str(native_model_path), artifact_path="model_files")
+
+            logger.info("MLflow run ID: %s", run_id)
 
         logger.info("Model training completed successfully.")
 
-        return {"model_path": str(model_path)}
+        return {"model_path": str(model_path),
+                "run_id": run_id}
+
+    # def initiate_model_training(self):
+
+    #     df = self.load_data()
+
+    #     train_df, val_df = self.split_data(df)
+
+    #     X_train, y_train, X_val, y_val = self.prepare_features(train_df, val_df)
+
+    #     pipeline = self.train(X_train, y_train, X_val, y_val)
+
+    #     model_path = self.save_artifacts(pipeline)
+
+    #     logger.info("Model training completed successfully.")
+
+    #     return {"model_path": str(model_path)}

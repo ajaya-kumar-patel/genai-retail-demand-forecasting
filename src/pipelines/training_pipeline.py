@@ -48,6 +48,7 @@ class TrainingPipeline:
 
     def run(self):
         results = {}
+        training_result = None
 
         try:
             # STEP 1: DATA INGESTION
@@ -136,9 +137,14 @@ class TrainingPipeline:
                     validation_days=self.validation_days,
                 )
 
-                evaluation_result = (
-                    evaluator.initiate_model_evaluation()
+                run_id = (
+                    training_result["run_id"]
+                    if training_result is not None
+                    else None
                 )
+
+                evaluation_result = evaluator.initiate_model_evaluation(run_id=run_id)
+
                 results["evaluation"] = evaluation_result
 
                 metrics = evaluation_result["metrics"]
@@ -178,7 +184,7 @@ if __name__ == "__main__":
         run_ingestion=False,
         run_validation=False,
         run_feature_engineering=False,
-        run_training=False,
+        run_training=True,
         run_evaluation=True,
     )
 

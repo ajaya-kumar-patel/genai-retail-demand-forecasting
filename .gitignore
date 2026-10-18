@@ -63,3 +63,14 @@ Thumbs.db
 
 
 /models
+
+
+# MLflow tracking database and generated artifacts
+mlflow.db
+mlflow.db-journal
+mlflow.db-shm
+mlflow.db-wal
+mlartifacts/
+mlruns/
+
+

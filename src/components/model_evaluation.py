@@ -6,6 +6,9 @@ import joblib
 import numpy as np
 import pandas as pd
 
+import mlflow
+from src.utils.mlflow_utils import setup_mlflow
+
 logger = logging.getLogger(__name__)
 
 
@@ -200,12 +203,13 @@ class ModelEvaluator:
                 "predictions_path": str(predictions_path)
                 }
 
-    def initiate_model_evaluation(self):
-        """Run end-to-end model evaluation."""
+    def initiate_model_evaluation(self, run_id=None):
+        """Evaluate the model and log metrics to MLflow."""
+
+        setup_mlflow()
 
         df = self.load_data()
         pipeline = self.load_model()
-
         val_df = self.split_data(df)
 
         X_val = val_df[self.feature_cols].copy()
@@ -215,7 +219,6 @@ class ModelEvaluator:
 
         predictions = np.asarray(pipeline.predict(X_val), dtype=float)
 
-        # Keep the same row order as the validation data.
         if len(predictions) != len(val_df):
             raise ValueError("Prediction count does not match validation row count.")
 
@@ -225,7 +228,6 @@ class ModelEvaluator:
         metrics = self.calculate_metrics(y_val, predictions)
 
         metrics["model"] = "XGBRegressor"
-
         metrics["validation_start"] = val_df["date"].min().strftime("%Y-%m-%d")
 
         metrics["validation_end"] = val_df["date"].max().strftime("%Y-%m-%d")
@@ -237,9 +239,20 @@ class ModelEvaluator:
         predictions_df = predictions_df.rename(columns={"sales": "actual_sales"})
 
         predictions_df["predicted_sales"] = predictions
-        predictions_df["absolute_error"] = np.abs(predictions_df["actual_sales"] - predictions_df["predicted_sales"])
+        predictions_df["absolute_error"] = np.abs(predictions_df["actual_sales"]
+                                                   - predictions_df["predicted_sales"])
 
         artifacts = self.save_artifacts(metrics, predictions_df)
+
+        # Resume the training run so metrics and model share a run.
+        if run_id is not None:
+            with mlflow.start_run(run_id=run_id):
+                self._log_evaluation_to_mlflow(metrics, artifacts)
+        else:
+            # Supports standalone evaluation as well.
+            with mlflow.start_run(run_name="xgboost-evaluation"):
+                mlflow.set_tag("stage", "standalone-evaluation")
+                self._log_evaluation_to_mlflow(metrics, artifacts)
 
         logger.info("Model evaluation completed.")
         logger.info(
@@ -255,3 +268,97 @@ class ModelEvaluator:
         )
 
         return {"metrics": metrics, **artifacts}
+
+
+    def _log_evaluation_to_mlflow(self, metrics, artifacts):
+        """Log evaluation results and report files."""
+
+        mlflow.log_metrics({
+            "mae": metrics["mae"],
+            "rmse": metrics["rmse"],
+            "mean_bias": metrics["mean_bias"],
+        })
+
+        if metrics["wape_percent"] is not None:
+            mlflow.log_metric(
+                "wape_percent",
+                metrics["wape_percent"],
+            )
+
+        mlflow.log_metric(
+            "n_samples",
+            metrics["n_samples"],
+        )
+
+        mlflow.set_tags({
+            "evaluation_start": metrics["validation_start"],
+            "evaluation_end": metrics["validation_end"],
+            "evaluation_days": str(metrics["validation_days"]),
+        })
+
+        mlflow.log_artifact(
+            artifacts["metrics_path"],
+            artifact_path="evaluation",
+        )
+
+        mlflow.log_artifact(
+            artifacts["predictions_path"],
+            artifact_path="evaluation",
+        )
+
+
+    # def initiate_model_evaluation(self):
+    #     """Run end-to-end model evaluation."""
+
+    #     df = self.load_data()
+    #     pipeline = self.load_model()
+
+    #     val_df = self.split_data(df)
+
+    #     X_val = val_df[self.feature_cols].copy()
+    #     y_val = val_df["sales"].to_numpy(dtype=float)
+
+    #     logger.info("Generating validation predictions...")
+
+    #     predictions = np.asarray(pipeline.predict(X_val), dtype=float)
+
+    #     # Keep the same row order as the validation data.
+    #     if len(predictions) != len(val_df):
+    #         raise ValueError("Prediction count does not match validation row count.")
+
+    #     if not np.isfinite(predictions).all():
+    #         raise ValueError("Model generated non-finite predictions.")
+
+    #     metrics = self.calculate_metrics(y_val, predictions)
+
+    #     metrics["model"] = "XGBRegressor"
+
+    #     metrics["validation_start"] = val_df["date"].min().strftime("%Y-%m-%d")
+
+    #     metrics["validation_end"] = val_df["date"].max().strftime("%Y-%m-%d")
+
+    #     metrics["validation_days"] = int(val_df["date"].nunique())
+
+    #     predictions_df = val_df[["item_id", "date", "sales"]].copy()
+
+    #     predictions_df = predictions_df.rename(columns={"sales": "actual_sales"})
+
+    #     predictions_df["predicted_sales"] = predictions
+    #     predictions_df["absolute_error"] = np.abs(predictions_df["actual_sales"] - predictions_df["predicted_sales"])
+
+    #     artifacts = self.save_artifacts(metrics, predictions_df)
+
+    #     logger.info("Model evaluation completed.")
+    #     logger.info(
+    #         "MAE: %.4f | RMSE: %.4f | WAPE: %s | Mean Bias: %.4f",
+    #         metrics["mae"],
+    #         metrics["rmse"],
+    #         (
+    #             f'{metrics["wape_percent"]:.2f}%'
+    #             if metrics["wape_percent"] is not None
+    #             else "undefined"
+    #         ),
+    #         metrics["mean_bias"],
+    #     )
+
+    #     return {"metrics": metrics, **artifacts}
