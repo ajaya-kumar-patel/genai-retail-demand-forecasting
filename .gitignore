@@ -1,6 +1,13 @@
 roadmap.txt
 
-data/
+# DVC data: ignore actual data, but allow DVC metadata
+/data/*
+!/data/*.dvc
+
+
+# Model artifacts managed by DVC
+/models/*
+!/models/*.dvc
 
 
 # Python
@@ -37,16 +44,6 @@ ENV/
 .env.*
 
 
-# Generated outputs
-
-models/
-*.joblib
-*.pkl
-*.pickle
-*.onnx
-
-
-
 # Temp file
 notebooks/test.ipynb
 .ipynb_checkpoints/
@@ -65,3 +62,4 @@ temp/
 Thumbs.db
 
 
+/models
