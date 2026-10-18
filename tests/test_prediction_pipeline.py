@@ -73,13 +73,23 @@ def test_negative_prediction_is_clipped_to_zero(make_pipeline, prediction_args):
     assert result["predicted_sales"] == 0.0
 
 
-def test_missing_model_raises_file_not_found(tmp_path, prediction_args):
-    pipeline = PredictionPipeline(
-        model_path=tmp_path / "missing_model.joblib"
-    )
-
+def test_missing_model_raises_file_not_found(tmp_path):
     with pytest.raises(FileNotFoundError, match="Model not found"):
-        pipeline.predict(**prediction_args)
+        PredictionPipeline(model_path=tmp_path / "missing_model.joblib")
+
+
+# def test_missing_model_raises_file_not_found(tmp_path, prediction_args):
+#     pipeline = PredictionPipeline(
+#         model_path=tmp_path / "missing_model.joblib"
+#     )
+
+#     with pytest.raises(FileNotFoundError, match="Model not found"):
+#         pipeline.predict(**prediction_args)
+
+
+def test_missing_model_raises_file_not_found(tmp_path):
+    with pytest.raises(FileNotFoundError, match="Model not found"):
+        PredictionPipeline(model_path=tmp_path / "missing_model.joblib")
 
 
 def test_prediction_is_a_non_negative_number(make_pipeline, prediction_args):

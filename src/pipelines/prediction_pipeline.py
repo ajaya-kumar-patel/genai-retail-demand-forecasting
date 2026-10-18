@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 class PredictionPipeline:
     """Predict sales for a single input row."""
-
     def __init__(self, model_path=None):
         project_root = Path(__file__).resolve().parents[2]
 
@@ -18,6 +17,13 @@ class PredictionPipeline:
             if model_path
             else project_root / "models" / "xgboost_pipeline.joblib"
         )
+
+        if not self.model_path.is_file():
+            raise FileNotFoundError(f"Model not found: {self.model_path}")
+
+        logger.info("Loading model from %s", self.model_path)
+        self.model = joblib.load(self.model_path)
+        logger.info("Model loaded successfully.")
 
     def predict(
         self,
@@ -44,11 +50,6 @@ class PredictionPipeline:
         event_type_2,
     ):
         try:
-            if not self.model_path.is_file():
-                raise FileNotFoundError(
-                    f"Model not found: {self.model_path}"
-                )
-
             input_data = {
                 "item_id": [item_id],
                 "dept_id": [dept_id],
@@ -75,8 +76,7 @@ class PredictionPipeline:
 
             input_df = pd.DataFrame(input_data)
 
-            model = joblib.load(self.model_path)
-            prediction = model.predict(input_df)
+            prediction = self.model.predict(input_df)
 
             predicted_sales = max(0.0, float(prediction[0]))
 

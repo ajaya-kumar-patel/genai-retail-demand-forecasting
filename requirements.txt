@@ -1,4 +1,11 @@
 
-pytest
-mlflow
-
+fastapi==0.143.3
+uvicorn[standard]==0.54.0
+pandas==3.0.6
+numpy==2.5.4
+scikit-learn==1.9.1
+xgboost==3.4.1
+joblib==1.6.0
+pyarrow==25.0.1
+mlflow==3.17.1
+pytest==9.1.1
