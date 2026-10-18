@@ -232,8 +232,8 @@ class DataValidation:
 
         if errors:
             raise ValueError(
-                "Data validation failed. Check "
-                f"{self.report_path}"
+                f"Data validation failed: {'; '.join(errors)}. "
+                f"Check {self.report_path}"
             )
 
         logger.info(
