@@ -1,0 +1,4 @@
+[core]
+    remote = s3remote
+['remote "s3remote"']
+    url = s3://retail-demand-forecasting-308525896357/dvcstore
