@@ -1,0 +1,11 @@
+{
+    "mae": 1.0557227326497347,
+    "rmse": 2.036898341043171,
+    "wape_percent": 70.438170553533,
+    "mean_bias": 0.005445518615384491,
+    "n_samples": 85372,
+    "model": "XGBRegressor",
+    "validation_start": "2016-03-28",
+    "validation_end": "2016-04-24",
+    "validation_days": 28
+}
