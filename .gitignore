@@ -7,7 +7,9 @@ roadmap.txt
 
 # Model artifacts managed by DVC
 /models/*
-!/models/*.dvc
+!/models/xgboost_pipeline.joblib
+!/models/xgboost_model.json
+!/models/evaluation/
 
 
 # Python
@@ -61,8 +63,6 @@ temp/
 .DS_Store
 Thumbs.db
 
-
-/models
 
 
 # MLflow tracking database and generated artifacts
