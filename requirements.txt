@@ -9,3 +9,8 @@ joblib==1.6.0
 pyarrow==25.0.1
 mlflow==3.17.1
 pytest==9.1.1
+
+#GenAI
+PyMySQL==1.2.3
+SQLAlchemy==2.1.5
+streamlit==1.66.0
